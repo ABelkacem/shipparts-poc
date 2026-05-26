@@ -1,0 +1,82 @@
+
+# ═══════════════════════════════════════════════════════════════
+# ShipParts AI Pipeline — Local Development Stack
+# ═══════════════════════════════════════════════════════════════
+#
+# Start with:  docker-compose up -d
+# Then run:    mvn spring-boot:run
+#
+# Services:
+#   postgres  — PostgreSQL 16 + pgvector (port 5432)
+#   ollama    — Local LLM server (port 11434)
+#   redis     — For future Celery/job queue (port 6379)
+# ═══════════════════════════════════════════════════════════════
+
+services:
+
+  # ── PostgreSQL 16 + pgvector ─────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: shipparts-postgres
+    environment:
+      POSTGRES_DB:       shipparts
+      POSTGRES_USER:     shipparts
+      POSTGRES_PASSWORD: shipparts
+    ports:
+      - "5432:5432"
+    volumes:
+      - shipparts-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shipparts"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Ollama — Local LLM (Mistral 7B + nomic-embed-text) ───────
+  # Pull models after first start:
+  #   docker exec -it shipparts-ollama ollama pull mistral:7b-instruct
+  #   docker exec -it shipparts-ollama ollama pull nomic-embed-text
+  ollama:
+    image: ollama/ollama:latest
+    container_name: shipparts-ollama
+    environment:
+     - SSL_CERT_FILE=/certs/ca-bundle.pem
+     - REQUESTS_CA_BUNDLE=/certs/ca-bundle.pem
+    ports:
+      - "11434:11434"
+    volumes:
+      - shipparts-ollama:/root/.ollama
+    # Uncomment if you have NVIDIA GPU:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # ── Redis — Job queue (optional, for future async jobs) ───────
+  redis:
+    image: redis:7-alpine
+    container_name: shipparts-redis
+    ports:
+      - "6379:6379"
+
+  # ── PgAdmin — DB GUI (optional, dev only) ────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: shipparts-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL:    admin@shipparts.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools   # Only starts with: docker-compose --profile tools up
+
+volumes:
+  shipparts-pgdata:
+  shipparts-ollama:
