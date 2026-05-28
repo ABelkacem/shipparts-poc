@@ -80,9 +80,13 @@ public class PdfScanService {
 
             if (text == null || text.strip().length() < MIN_TEXT_LENGTH) {
                 // Very little text found → check if images exist (scanned)
-                boolean hasImages = doc.getPages().stream()
-                        .anyMatch(p -> !p.getResources().getXObjectNames().equals(
-                                new ArrayList<>()));
+                boolean hasImages = false;
+                for (var page : doc.getPages()) {
+                    if (page.getResources().getXObjectNames().iterator().hasNext()) {
+                        hasImages = true;
+                        break;
+                    }
+                }
                 return hasImages ? PdfType.SCANNED : PdfType.IMAGE;
             }
 
@@ -129,7 +133,9 @@ public class PdfScanService {
             sb.append("\n--- Dokumenttext ---\n");
             sb.append(stripper.getText(doc));
 
-            log.debug("Form PDF: extracted {} form fields", acroForm.getFieldTree().size());
+            int fieldCount = 0;
+            for (PDField ignored : acroForm.getFieldTree()) fieldCount++;
+            log.debug("Form PDF: extracted {} form fields", fieldCount);
             return sb.toString();
         }
     }

@@ -24,7 +24,7 @@ import java.util.Properties;
 @RequiredArgsConstructor
 public class EmailListenerService {
 
-    private final PipelineOrchestrator pipeline = new PipelineOrchestrator();
+    private final PipelineOrchestrator pipeline;
 
     @Value("${shipparts.email.host:imap.example.com}")
     private String host;

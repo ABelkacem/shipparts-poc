@@ -46,8 +46,7 @@ public class EmbeddingService {
      */
     public float[] embedQuery(String queryText) {
         log.debug("Embedding query: {}", queryText.substring(0, Math.min(80, queryText.length())));
-        List<Double> vector = embeddingModel.embed(queryText);
-        return toFloatArray(vector);
+        return embeddingModel.embed(queryText);
     }
 
     // ── Article Indexing ──────────────────────────────────────────────────
@@ -59,7 +58,7 @@ public class EmbeddingService {
     @Transactional
     public ArtikelEmbedding embedAndSaveArtikel(Artikel artikel) {
         String inputText = buildArtikelText(artikel);
-        float[] vector   = toFloatArray(embeddingModel.embed(inputText));
+        float[] vector   = embeddingModel.embed(inputText);
 
         // Upsert: update existing embedding or create new one
         ArtikelEmbedding embedding = embeddingRepository
@@ -148,11 +147,4 @@ public class EmbeddingService {
         return sb.toString().trim();
     }
 
-    private float[] toFloatArray(List<Double> doubles) {
-        float[] result = new float[doubles.size()];
-        for (int i = 0; i < doubles.size(); i++) {
-            result[i] = doubles.get(i).floatValue();
-        }
-        return result;
-    }
 }
