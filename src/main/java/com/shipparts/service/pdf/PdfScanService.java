@@ -81,8 +81,8 @@ public class PdfScanService {
             if (text == null || text.strip().length() < MIN_TEXT_LENGTH) {
                 // Very little text found → check if images exist (scanned)
                 boolean hasImages = false;
-                for (var page : doc.getPages()) {
-                    if (page.getResources().getXObjectNames().iterator().hasNext()) {
+                for (var p : doc.getPages()) {
+                    if (p.getResources().getXObjectNames().iterator().hasNext()) {
                         hasImages = true;
                         break;
                     }

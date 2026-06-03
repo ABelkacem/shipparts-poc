@@ -14,6 +14,7 @@ import com.shipparts.service.embedding.ExtractionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -44,6 +45,7 @@ public class PipelineController {
     private final FeedbackService feedbackService;
     private final ReEmbeddingScheduler reEmbeddingScheduler;
     private final EmbeddingService embeddingService;
+    private final com.shipparts.repository.ArtikelRepository artikelRepository;
 
     // ── Pipeline Trigger ──────────────────────────────────────────────────
 
@@ -75,6 +77,7 @@ public class PipelineController {
      * Get all requests currently awaiting human review.
      */
     @GetMapping("/pipeline/queue")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<ReviewQueueItem>> getReviewQueue() {
         List<Anfrage> pending = anfrageRepository
                 .findByStatusOrderByCreatedAtDesc(Anfrage.AnfrageStatus.REVIEW_PENDING);
@@ -91,6 +94,7 @@ public class PipelineController {
      * Get detail of a single anfrage (for the review UI).
      */
     @GetMapping("/pipeline/{anfrageId}")
+    @Transactional(readOnly = true)
     public ResponseEntity<ReviewQueueItem> getAnfrage(@PathVariable UUID anfrageId) {
         return anfrageRepository.findById(anfrageId)
                 .map(a -> {
@@ -172,6 +176,18 @@ public class PipelineController {
                 "rejected",        anfrageRepository.countByStatus(Anfrage.AnfrageStatus.REJECTED)
         ));
     }
+
+    /** All articles — used by the review UI for the "correct to" dropdown. */
+    @GetMapping("/artikel")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<ArtikelOption>> listArtikel() {
+        List<ArtikelOption> list = new java.util.ArrayList<>();
+        artikelRepository.findAll().forEach(a -> list.add(new ArtikelOption(
+                a.getId(), a.getArtikelNr(), a.getBeschreibung(), a.getHersteller())));
+        return ResponseEntity.ok(list);
+    }
+
+    public record ArtikelOption(UUID id, String artikelNr, String beschreibung, String hersteller) {}
 
     // ── DTOs (records for brevity) ────────────────────────────────────────
 
