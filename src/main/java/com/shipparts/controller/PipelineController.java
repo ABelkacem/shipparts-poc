@@ -183,7 +183,7 @@ public class PipelineController {
     public ResponseEntity<List<ArtikelOption>> listArtikel() {
         List<ArtikelOption> list = new java.util.ArrayList<>();
         artikelRepository.findAll().forEach(a -> list.add(new ArtikelOption(
-                a.getId(), a.getArtikelNr(), a.getBeschreibung(), a.getHersteller())));
+                a.getId(), a.getArtikelNr(), a.getBeschreibungLang(), a.getHersteller())));
         return ResponseEntity.ok(list);
     }
 
