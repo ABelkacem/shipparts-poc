@@ -72,34 +72,106 @@
 
           <hr>
 
-          <div>
-            <label class="text-xs font-semibold text-slate-500 uppercase">Absender</label>
-            <input x-model="form.from"
-                   class="mt-1 w-full border rounded px-3 py-2 text-sm font-mono"/>
+          <!-- Kanal-Badge -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold px-2 py-0.5 rounded"
+                  :class="isProcurement() ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700'"
+                  x-text="isProcurement() ? 'PROCUREMENT' : 'E-MAIL'"></span>
+            <span class="text-xs text-slate-400" x-text="isProcurement() ? 'POST /api/intake/procurement' : 'POST /api/pipeline/process'"></span>
           </div>
 
-          <div>
-            <label class="text-xs font-semibold text-slate-500 uppercase">Betreff</label>
-            <input x-model="form.subject"
-                   class="mt-1 w-full border rounded px-3 py-2 text-sm"/>
-          </div>
+          <!-- E-Mail Felder -->
+          <template x-if="!isProcurement()">
+            <div class="space-y-4">
+              <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Absender</label>
+                <input x-model="form.from"
+                       class="mt-1 w-full border rounded px-3 py-2 text-sm font-mono"/>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Betreff</label>
+                <input x-model="form.subject"
+                       class="mt-1 w-full border rounded px-3 py-2 text-sm"/>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">E-Mail-Body</label>
+                <textarea x-model="form.emailBody" rows="6"
+                          class="mt-1 w-full border rounded px-3 py-2 text-sm font-mono"></textarea>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">PDF-Anhang (optional)</label>
+                <input type="file" accept="application/pdf"
+                       @change="form.pdf = $event.target.files[0]"
+                       class="mt-1 w-full text-sm"/>
+                <template x-if="form.pdf">
+                  <p class="text-xs text-emerald-600 mt-1"
+                     x-text="'✓ ' + form.pdf.name + ' (' + Math.round(form.pdf.size/1024) + ' KB)'"></p>
+                </template>
+              </div>
+            </div>
+          </template>
 
-          <div>
-            <label class="text-xs font-semibold text-slate-500 uppercase">E-Mail-Body</label>
-            <textarea x-model="form.emailBody" rows="6"
-                      class="mt-1 w-full border rounded px-3 py-2 text-sm font-mono"></textarea>
-          </div>
-
-          <div>
-            <label class="text-xs font-semibold text-slate-500 uppercase">PDF-Anhang (optional)</label>
-            <input type="file" accept="application/pdf"
-                   @change="form.pdf = $event.target.files[0]"
-                   class="mt-1 w-full text-sm"/>
-            <template x-if="form.pdf">
-              <p class="text-xs text-emerald-600 mt-1"
-                 x-text="'✓ ' + form.pdf.name + ' (' + Math.round(form.pdf.size/1024) + ' KB)'"></p>
-            </template>
-          </div>
+          <!-- Procurement Felder -->
+          <template x-if="isProcurement()">
+            <div class="space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs font-semibold text-slate-500 uppercase">Bestell-Nr (PO)</label>
+                  <input x-model="procurement.bestellNummer"
+                         class="mt-1 w-full border rounded px-3 py-2 text-sm font-mono"/>
+                </div>
+                <div>
+                  <label class="text-xs font-semibold text-slate-500 uppercase">System</label>
+                  <input x-model="procurement.system" placeholder="SAP / Oracle / …"
+                         class="mt-1 w-full border rounded px-3 py-2 text-sm"/>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs font-semibold text-slate-500 uppercase">Artikel-Nr (optional)</label>
+                  <input x-model="procurement.artikelNr"
+                         class="mt-1 w-full border rounded px-3 py-2 text-sm font-mono"/>
+                </div>
+                <div>
+                  <label class="text-xs font-semibold text-slate-500 uppercase">Menge</label>
+                  <input x-model="procurement.menge" type="number" min="1"
+                         class="mt-1 w-full border rounded px-3 py-2 text-sm"/>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Beschreibung</label>
+                <input x-model="procurement.beschreibung"
+                       class="mt-1 w-full border rounded px-3 py-2 text-sm"/>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs font-semibold text-slate-500 uppercase">Hersteller</label>
+                  <input x-model="procurement.hersteller"
+                         class="mt-1 w-full border rounded px-3 py-2 text-sm"/>
+                </div>
+                <div>
+                  <label class="text-xs font-semibold text-slate-500 uppercase">Maschinentyp</label>
+                  <input x-model="procurement.maschinentyp"
+                         class="mt-1 w-full border rounded px-3 py-2 text-sm"/>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Kontakt-E-Mail</label>
+                <input x-model="procurement.kontaktEmail" type="email"
+                       class="mt-1 w-full border rounded px-3 py-2 text-sm font-mono"/>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Lieferadresse (optional)</label>
+                <input x-model="procurement.lieferadresse"
+                       class="mt-1 w-full border rounded px-3 py-2 text-sm"/>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Anforderungstext (optional)</label>
+                <textarea x-model="procurement.anforderungsText" rows="3"
+                          class="mt-1 w-full border rounded px-3 py-2 text-sm font-mono"></textarea>
+              </div>
+            </div>
+          </template>
 
           <div class="flex items-center gap-3 pt-2">
             <button @click="submit()" :disabled="running"
@@ -213,27 +285,102 @@ function testApp() {
         subject: 'URGENT spare part needed',
         emailBody: 'URGENT — vessel stuck in port. Need Part-Nr MAN-BR-7710 ASAP for delivery to Rotterdam tomorrow.',
       },
+      // ── Procurement-Szenarien ──────────────────────────────────────────
+      {
+        code: 'UC-P1',
+        channel: 'PROCUREMENT',
+        title: 'Procurement: Direkter Treffer',
+        description: 'ERP-System sendet strukturierte Anfrage mit exakter Artikel-Nr.',
+        expectedConfidence: '1.0',
+        expectedResult: 'MATCHING — direkter Treffer auf WAR-FIV-2234, kanal=PROCUREMENT',
+        bestellNummer: 'PO-2024-001',
+        system: 'SAP',
+        artikelNr: 'WAR-FIV-2234',
+        beschreibung: 'Fuel injection valve Wärtsilä RT-flex',
+        hersteller: 'Wärtsilä',
+        maschinentyp: 'RT-flex58T',
+        menge: 2,
+        lieferadresse: 'Hamburg Port, Pier 7',
+        kontaktEmail: 'buyer@shipping.com',
+        anforderungsText: '',
+      },
+      {
+        code: 'UC-P2',
+        channel: 'PROCUREMENT',
+        title: 'Procurement: Vage Beschreibung',
+        description: 'ERP-Anfrage ohne Artikel-Nr → semantische Suche.',
+        expectedConfidence: '0.5 – 0.85',
+        expectedResult: 'REVIEW_PENDING — KI schlägt MAN-BR-7710 vor, kanal=PROCUREMENT',
+        bestellNummer: 'PO-2024-002',
+        system: 'Oracle',
+        artikelNr: '',
+        beschreibung: 'Turbolader-Lager MAN B&W Motor',
+        hersteller: 'MAN B&W',
+        maschinentyp: '',
+        menge: 4,
+        lieferadresse: 'Rotterdam, Terminal 3',
+        kontaktEmail: 'purchasing@fleet.com',
+        anforderungsText: 'Bitte mit Kurzbeschreibung und Lieferzeit anbieten.',
+      },
+      {
+        code: 'UC-P3',
+        channel: 'PROCUREMENT',
+        title: 'Procurement: Minimale Angaben',
+        description: 'Nur Beschreibung, kein Artikel-Nr, kein Hersteller.',
+        expectedConfidence: '< 0.5',
+        expectedResult: 'REVIEW_PENDING — wenig Kontext, Mensch prüft',
+        bestellNummer: 'PO-2024-003',
+        system: 'SAP',
+        artikelNr: '',
+        beschreibung: 'injection pump for engine',
+        hersteller: '',
+        maschinentyp: '',
+        menge: 1,
+        lieferadresse: '',
+        kontaktEmail: 'eng@vessel.com',
+        anforderungsText: '',
+      },
     ],
 
     selectedIdx: null,
     selected: null,
     form: { from: '', subject: '', emailBody: '', pdf: null },
+    procurement: { bestellNummer: '', system: '', artikelNr: '', beschreibung: '',
+                   hersteller: '', maschinentyp: '', menge: 1,
+                   lieferadresse: '', kontaktEmail: '', anforderungsText: '' },
     result: null,
     error: '',
     running: false,
     toast: '',
+
+    isProcurement() { return this.selected && this.selected.channel === 'PROCUREMENT'; },
 
     init() { this.selectScenario(0); },
 
     selectScenario(idx) {
       this.selectedIdx = idx;
       this.selected    = this.scenarios[idx];
-      this.form        = {
-        from: this.selected.from,
-        subject: this.selected.subject,
-        emailBody: this.selected.emailBody,
-        pdf: null,
-      };
+      if (this.isProcurement()) {
+        this.procurement = {
+          bestellNummer:   this.selected.bestellNummer   || '',
+          system:          this.selected.system          || '',
+          artikelNr:       this.selected.artikelNr       || '',
+          beschreibung:    this.selected.beschreibung    || '',
+          hersteller:      this.selected.hersteller      || '',
+          maschinentyp:    this.selected.maschinentyp    || '',
+          menge:           this.selected.menge           || 1,
+          lieferadresse:   this.selected.lieferadresse   || '',
+          kontaktEmail:    this.selected.kontaktEmail    || '',
+          anforderungsText: this.selected.anforderungsText || '',
+        };
+      } else {
+        this.form = {
+          from: this.selected.from,
+          subject: this.selected.subject,
+          emailBody: this.selected.emailBody,
+          pdf: null,
+        };
+      }
       this.result = null;
       this.error  = '';
     },
@@ -254,13 +401,35 @@ function testApp() {
       this.error   = '';
       this.result  = null;
       try {
-        const fd = new FormData();
-        fd.append('from',      this.form.from);
-        fd.append('subject',   this.form.subject);
-        fd.append('emailBody', this.form.emailBody);
-        if (this.form.pdf) fd.append('pdf', this.form.pdf);
-
-        const r = await fetch('/api/pipeline/process', { method: 'POST', body: fd });
+        let r;
+        if (this.isProcurement()) {
+          // Procurement JSON endpoint
+          const payload = {
+            bestellNummer:    this.procurement.bestellNummer    || null,
+            system:           this.procurement.system           || null,
+            artikelNr:        this.procurement.artikelNr        || null,
+            beschreibung:     this.procurement.beschreibung     || null,
+            hersteller:       this.procurement.hersteller       || null,
+            maschinentyp:     this.procurement.maschinentyp     || null,
+            menge:            this.procurement.menge            ? parseInt(this.procurement.menge) : null,
+            lieferadresse:    this.procurement.lieferadresse    || null,
+            kontaktEmail:     this.procurement.kontaktEmail     || null,
+            anforderungsText: this.procurement.anforderungsText || null,
+          };
+          r = await fetch('/api/intake/procurement', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } else {
+          // Email multipart endpoint
+          const fd = new FormData();
+          fd.append('from',      this.form.from);
+          fd.append('subject',   this.form.subject);
+          fd.append('emailBody', this.form.emailBody);
+          if (this.form.pdf) fd.append('pdf', this.form.pdf);
+          r = await fetch('/api/pipeline/process', { method: 'POST', body: fd });
+        }
         if (!r.ok) throw new Error('HTTP ' + r.status + ' — ' + (await r.text()));
         this.result = await r.json();
         this.showToast('Pipeline ausgeführt ✓');

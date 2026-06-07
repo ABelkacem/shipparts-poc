@@ -3,6 +3,8 @@ package com.shipparts.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shipparts.domain.Anfrage;
 import com.shipparts.domain.Anfrage.AnfrageStatus;
+import com.shipparts.domain.Anfrage.Kanal;
+import com.shipparts.dto.ProcurementAnfrage;
 import com.shipparts.dto.ExtractionResult;
 import com.shipparts.dto.MatchResult;
 import com.shipparts.repository.AnfrageRepository;
@@ -55,6 +57,22 @@ public class PipelineOrchestrator {
     // ── Entry point ───────────────────────────────────────────────────────
 
     /**
+     * Process an incoming procurement request (from ERP/Einkaufssystem).
+     * Transforms the structured request into the unified pipeline format (REQ-IN-02, REQ-IN-03).
+     */
+    @Transactional
+    public Anfrage processProcurement(ProcurementAnfrage req) {
+        log.info("Processing procurement request: bestellNr={} artikelNr={}",
+                req.bestellNummer(), req.artikelNr());
+
+        String from    = req.kontaktEmail() != null ? req.kontaktEmail() : "procurement@system.internal";
+        String subject = "Procurement: " + (req.artikelNr() != null ? req.artikelNr() : req.beschreibung());
+        String body    = buildProcurementBody(req);
+
+        return runPipeline(Kanal.PROCUREMENT, from, subject, body, null);
+    }
+
+    /**
      * Process an incoming email (from IMAP listener or REST endpoint).
      * Returns the updated Anfrage entity with status set.
      */
@@ -62,9 +80,16 @@ public class PipelineOrchestrator {
     public Anfrage processEmail(String from, String subject,
                                 String body, byte[] pdfAttachment) {
         log.info("Processing email from={} subject='{}'", from, subject);
+        return runPipeline(Kanal.EMAIL, from, subject, body, pdfAttachment);
+    }
 
+    // ── Unified internal pipeline ─────────────────────────────────────────
+
+    @Transactional
+    Anfrage runPipeline(Kanal kanal, String from, String subject,
+                        String body, byte[] pdfAttachment) {
         // 1. Persist incoming request
-        Anfrage anfrage = createAnfrage(from, subject, body);
+        Anfrage anfrage = createAnfrage(from, subject, body, kanal);
 
         try {
             // 2. PDF scan (if attachment present)
@@ -136,16 +161,32 @@ public class PipelineOrchestrator {
 
     // ── Private Helpers ───────────────────────────────────────────────────
 
-    private Anfrage createAnfrage(String from, String subject, String body) {
+    private Anfrage createAnfrage(String from, String subject, String body, Kanal kanal) {
         Anfrage a = Anfrage.builder()
                 .emailFrom(from)
                 .emailSubject(subject)
                 .emailBodyRaw(body)
+                .kanal(kanal)
                 .status(AnfrageStatus.NEW)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
         return anfrageRepository.save(a);
+    }
+
+    private String buildProcurementBody(ProcurementAnfrage req) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Procurement Request\n");
+        if (req.bestellNummer() != null) sb.append("PO-Nr: ").append(req.bestellNummer()).append("\n");
+        if (req.system()        != null) sb.append("System: ").append(req.system()).append("\n");
+        if (req.artikelNr()     != null) sb.append("Artikel-Nr: ").append(req.artikelNr()).append("\n");
+        if (req.beschreibung()  != null) sb.append("Beschreibung: ").append(req.beschreibung()).append("\n");
+        if (req.hersteller()    != null) sb.append("Hersteller: ").append(req.hersteller()).append("\n");
+        if (req.maschinentyp()  != null) sb.append("Maschinentyp: ").append(req.maschinentyp()).append("\n");
+        if (req.menge()         != null) sb.append("Menge: ").append(req.menge()).append("\n");
+        if (req.lieferadresse() != null) sb.append("Lieferadresse: ").append(req.lieferadresse()).append("\n");
+        if (req.anforderungsText() != null) sb.append("\n").append(req.anforderungsText());
+        return sb.toString();
     }
 
     private void updateStatus(Anfrage anfrage, AnfrageStatus status) {

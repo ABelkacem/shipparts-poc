@@ -43,6 +43,10 @@ public class Anfrage {
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Object> extraktJson;
 
+    @Column(name = "kanal", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Kanal kanal = Kanal.EMAIL;
+
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
     private AnfrageStatus status = AnfrageStatus.NEW;
@@ -53,9 +57,11 @@ public class Anfrage {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    public enum Kanal {
+        EMAIL, PROCUREMENT
+    }
+
     public enum AnfrageStatus {
         NEW, EXTRACTING, MATCHING, REVIEW_PENDING, OFFER_SENT, REJECTED
     }
-    
-    
 }

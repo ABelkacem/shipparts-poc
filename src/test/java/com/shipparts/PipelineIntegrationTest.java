@@ -1,9 +1,12 @@
 package com.shipparts;
 
 import com.shipparts.domain.Anfrage;
+import com.shipparts.domain.Anfrage.Kanal;
 import com.shipparts.domain.Artikel;
 import com.shipparts.dto.ExtractionResult;
 import com.shipparts.dto.MatchResult;
+import com.shipparts.dto.ProcurementAnfrage;
+import com.shipparts.repository.AnfrageRepository;
 import com.shipparts.repository.ArtikelRepository;
 import com.shipparts.service.PipelineOrchestrator;
 import com.shipparts.service.embedding.EmbeddingService;
@@ -54,8 +57,10 @@ class PipelineIntegrationTest {
     }
 
     @Autowired ArtikelRepository artikelRepository;
+    @Autowired AnfrageRepository anfrageRepository;
     @Autowired EmbeddingService embeddingService;
     @Autowired MatchingService matchingService;
+    @Autowired PipelineOrchestrator pipeline;
 
     @BeforeEach
     void setUp() {
@@ -167,5 +172,88 @@ class PipelineIntegrationTest {
     void keywordSearch_partialText_findsArticles() {
         List<Artikel> results = artikelRepository.searchByText("Turbolader");
         assertThat(results).isNotEmpty();
+    }
+
+    // ── Kanal / Multi-Channel-Intake Tests (REQ-IN-01 – REQ-IN-04) ───────
+
+    @Test
+    @DisplayName("REQ-IN-01: Email-Intake setzt kanal=EMAIL auf der Anfrage")
+    void emailIntake_setsKanalEmail() {
+        Anfrage result = pipeline.processEmail(
+                "captain@vessel.com", "Spare part order",
+                "Please quote WAR-FIV-2234, qty 2.", null);
+
+        assertThat(result.getKanal()).isEqualTo(Kanal.EMAIL);
+        // Persisted value matches
+        Anfrage persisted = anfrageRepository.findById(result.getId()).orElseThrow();
+        assertThat(persisted.getKanal()).isEqualTo(Kanal.EMAIL);
+    }
+
+    @Test
+    @DisplayName("REQ-IN-02/03: Procurement-Intake wird durch dieselbe Pipeline verarbeitet")
+    void procurementIntake_runsUnifiedPipeline() {
+        ProcurementAnfrage req = new ProcurementAnfrage(
+                "PO-2024-001", "SAP",
+                "WAR-FIV-2234", "Fuel injection valve",
+                "Wärtsilä", "RT-flex58T",
+                2, "Hamburg Port",
+                "buyer@shipping.com", null);
+
+        Anfrage result = pipeline.processProcurement(req);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getKanal()).isEqualTo(Kanal.PROCUREMENT);
+        // Pipeline must advance past NEW (REQ-IN-03: unified processing)
+        assertThat(result.getStatus()).isNotEqualTo(Anfrage.AnfrageStatus.NEW);
+    }
+
+    @Test
+    @DisplayName("REQ-IN-04: Kanal bleibt nach Verarbeitung erhalten")
+    void procurement_kanalPersistedAfterProcessing() {
+        ProcurementAnfrage req = new ProcurementAnfrage(
+                "PO-2024-002", "Oracle",
+                null, "Turbolader-Lager MAN B&W",
+                "MAN B&W", null, 4, null,
+                "purchasing@fleet.com", "Bitte mit Kurzbeschreibung anbieten.");
+
+        Anfrage result = pipeline.processProcurement(req);
+        Anfrage persisted = anfrageRepository.findById(result.getId()).orElseThrow();
+
+        assertThat(persisted.getKanal()).isEqualTo(Kanal.PROCUREMENT);
+        assertThat(persisted.getEmailFrom()).isEqualTo("purchasing@fleet.com");
+    }
+
+    @Test
+    @DisplayName("REQ-IN-02: Procurement ohne Artikel-Nr fällt auf semantische Suche zurück")
+    void procurement_withoutArtikelNr_usesSemantikSearch() {
+        ProcurementAnfrage req = new ProcurementAnfrage(
+                "PO-2024-003", "SAP",
+                null, "injection valve Wartsila RT-flex",
+                "Wärtsilä", "RT-flex58T",
+                1, null, "eng@vessel.com", null);
+
+        Anfrage result = pipeline.processProcurement(req);
+
+        assertThat(result.getKanal()).isEqualTo(Kanal.PROCUREMENT);
+        // Body must contain structured fields for pipeline extraction
+        assertThat(result.getEmailBodyRaw()).contains("Wärtsilä");
+        assertThat(result.getEmailBodyRaw()).contains("RT-flex58T");
+    }
+
+    @Test
+    @DisplayName("REQ-IN-03: Email und Procurement landen in derselben Queue")
+    void bothChannels_appearInSameReviewQueue() {
+        pipeline.processEmail("cap@ship.com", "Query", "Need MAN-BR-7710", null);
+        ProcurementAnfrage req = new ProcurementAnfrage(
+                "PO-X", null, "MAN-BR-7710", null,
+                null, null, 1, null, "buyer@erp.com", null);
+        pipeline.processProcurement(req);
+
+        long reviewCount = anfrageRepository
+                .findByStatusOrderByCreatedAtDesc(Anfrage.AnfrageStatus.REVIEW_PENDING)
+                .stream()
+                .filter(a -> a.getKanal() == Kanal.EMAIL || a.getKanal() == Kanal.PROCUREMENT)
+                .count();
+        assertThat(reviewCount).isGreaterThanOrEqualTo(1);
     }
 }

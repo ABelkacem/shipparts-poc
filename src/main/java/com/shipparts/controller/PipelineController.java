@@ -192,24 +192,26 @@ public class PipelineController {
     // ── DTOs (records for brevity) ────────────────────────────────────────
 
     public record AnfrageResponse(
-            UUID id, String status, String emailFrom,
-            String emailSubject, String pdfType) {
+            UUID id, String status, String kanal,
+            String emailFrom, String emailSubject, String pdfType) {
         static AnfrageResponse from(Anfrage a) {
             return new AnfrageResponse(
                     a.getId(), a.getStatus().name(),
+                    a.getKanal().name(),
                     a.getEmailFrom(), a.getEmailSubject(), a.getPdfType());
         }
     }
 
     public record ReviewQueueItem(
-            UUID anfrageId, String status, String emailFrom,
-            String emailSubject, String emailBodyRaw,
+            UUID anfrageId, String status, String kanal,
+            String emailFrom, String emailSubject, String emailBodyRaw,
             String pdfText, String pdfType,
             Map<String, Object> extraktJson,
             List<FeedbackSummary> feedbacks) {
         static ReviewQueueItem from(Anfrage a, List<MatchFeedback> fbs) {
             return new ReviewQueueItem(
                     a.getId(), a.getStatus().name(),
+                    a.getKanal().name(),
                     a.getEmailFrom(), a.getEmailSubject(),
                     a.getEmailBodyRaw(), a.getPdfText(), a.getPdfType(),
                     a.getExtraktJson(),
